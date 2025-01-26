@@ -1,0 +1,80 @@
+# Langkah 1: Input data secara manual atau dengan mengimport file .xlsx/.csv
+
+## Input Data Manual
+
+```{r}
+data <- data.frame(  
+  sales = c(26.52, 12.48, 11.16, 22.2, 15.48, 8.64, 14.16, 15.84, 5.76, 12.72,
+            10.32, 20.88, 11.04, 11.64, 22.8, 26.88, 15, 29.28, 13.56, 17.52,
+            21.6, 15, 6.72, 18.6, 11.64),  
+  youtube = c(276.12, 53.4, 20.64, 181.8, 216.96, 10.44, 69, 144.24, 10.32,
+              239.76, 79.32, 257.64, 28.56, 117, 244.92, 234.48, 81.36, 337.68,
+              83.04, 176.76, 262.08, 284.88, 15.84, 273.96, 74.76),  
+  newspaper = c(83.04, 54.12, 83.16, 70.2, 70.08, 90, 28.2, 13.92, 1.2, 25.44,
+                29.04, 4.8, 79.08, 8.64, 55.2, 63.48, 136.8, 66.96, 21.96, 22.92,
+                64.08, 28.2, 59.52, 31.44, 21.96)  
+)
+```
+
+## Input Data .xlsx
+
+```{r}
+ library(readxl)
+read_excel("C:/Users/faeri/OneDrive/Documents/Statistika/Asprak Anreg/Minggu 2/data_iklan.xlsx")
+```
+
+## Input Data .xlsx
+
+Apabila file .csv pada software excel ditunjukkan dengan delimiter "**,**" maka dapat menggunakan fungsi [**read.csv**]{.underline}, apabila delimiter berupa "**;**" maka dapat menggunakan fungsi [**read.csv2**]{.underline}.
+
+```{r}
+library(readr)
+read.csv2("C:/Users/faeri/OneDrive/Documents/Statistika/Asprak Anreg/Minggu 2/data_iklan.csv")
+```
+
+# Langkah 2: Menghitung koefisien secara manual menggunakan rumus regresi
+
+Setelah memiliki data, kita dapat menghitung koefisien regresi secara manual menggunakan rumus regresi.
+
+$\hat{y_i}=\hat{\beta_0}+\hat{\beta_1}x_i$, $i=1,2,...,n$
+
+$\hat{\beta_1}=\frac{\sum(y_i-\bar{y})(x_i-\bar{x}))}{\sum(x_i-\bar{x})^2}=\frac{S_{xx}}{S_{xy}}$
+
+$\hat{\beta_0}=\bar{y}-\hat{\beta_1}\bar{x}$
+
+```{r}
+# Menghitung rata-rata dari 'youtube' dan 'sales'  
+x1_bar <- mean(data$youtube)  
+y_bar <- mean(data$sales)  
+
+# Menghitung B1 (slope)  
+numerator <- sum((data$youtube - x1_bar) * (data$sales - y_bar))  
+denominator <- sum((data$youtube - x1_bar)^2)  
+B1_manual <- numerator / denominator  
+
+# Menghitung B0 (intercept)  
+B0_manual <- y_bar - B1_manual * x1_bar  
+
+# Menampilkan hasil koefisien secara manual  
+cat("Koefisien B0 (manual):", B0_manual, "\n")  
+cat("Koefisien B1 (manual):", B1_manual, "\n")  
+```
+
+Berdasarkan hasil perhitungan secara manual di atas, diperoleh masing-masing nilai koefisien  $\hat{\beta_0}$ dan $\hat{\beta_1}$ sebesar 8.386 dan 0.0498. Dapat dituliskan sebagai persamaan garis regresi berupa $Y=8.386+0.0498X$, atau setiap terjadi perubahan sebesar 1 satuan pada iklan youtube akan mengakibatkan perubahan sebesar 0.0498 satuan pada penjualan.
+
+# Langkah 3: Menggunakan fungsi built-in R seperti lm()
+
+```{r}
+# Melakukan regresi linear menggunakan fungsi lm()  
+model <- lm(sales ~ youtube, data = data)  
+
+# Menampilkan ringkasan model  
+print(summary_model) 
+
+# Menampilkan hasil koefisien menggunakan fungsi lm()  
+summary_model <- summary(model)  
+cat("Koefisien B0:", summary_model$coefficients[1], "\n")  
+cat("Koefisien B1:", summary_model$coefficients[2], "\n")  
+```
+
+Dengan menggunakan fungsi [lm()]{.underline}, diperoleh hasil yang serupa bagi koefisien $\hat{\beta_0}$ dan $\hat{\beta_1}$, sehingga dapat pula kita simpulkan bahwa setiap terjadi perubahan sebesar 1 satuan pada iklan youtube akan mengakibatkan perubahan sebesar 0.0498 satuan pada penjualan.
