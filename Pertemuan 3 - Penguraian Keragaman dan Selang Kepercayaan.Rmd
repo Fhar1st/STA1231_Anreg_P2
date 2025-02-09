@@ -1,0 +1,192 @@
+---
+title: "Pertemuan 3 - Penguraian Keragaman dan Selang Kepercayaan"
+author: "Farik Firsteadi Haristiyanto"
+date: "`r Sys.Date()`"
+output:
+  rmdformats::readthedown
+---
+
+Pada pertemuan sebelumnya, kita sudah mempelajari perhitungan untuk mendapatkan nilai dugaan parameter $\beta_0$ dan $\beta_1$ dalam analisis regresi. Kali ini akan dilakukan pendalaman terkait penguraian keragaman dan selang kepercayaan nilai dugaan tersebut.
+
+```{r}
+data <- read.csv("C:/Users/faeri/OneDrive/Documents/Statistika/Asprak Anreg/Minggu 3/data liver.csv", sep = ";")
+y <- data$Y
+x1 <- data$X1
+n <- nrow(data)
+```
+
+```{r}
+data <- data.frame(cbind(y,x1))
+head(data)
+```
+
+```{r}
+model <- lm(y~x1, data)
+summary(model)
+```
+
+Berdasarkan perhitungan, didapat dugaan persamaan regresi linear sebagai berikut. Dugaan persamaan tersebut dapat pula disebut sebagai nilai harapan dari peubah respons $Y$.
+
+$$\hat{E[Y]}=\hat{Y}=138,8326+2,1045X_1$$
+
+# Penguraian Keragaman
+
+Penguraian keragaman dugaan persamaan regresi linear dapat dilakukan terlebih dahulu secara eksploratif melalui visualisasi sebagai berikut. Dari *scatter plot* yang dihasilkan, dapat diamati dua persamaan garis, yaitu $\hat{Y}$ sebagai nilai harapan $Y$ sekaligus dugaan persamaan dan $\bar{Y}$ sebagai rata-rata dari seluruh nilai $Y_i$ yang ada.
+
+```{r}
+y.bar <- mean(y)
+plot(x1,y)
+abline(model, col = "red")
+text(30, 220, "Y_duga", adj = c(-0.1,1.5), col = "red", cex =0.8)
+abline(h=y.bar, col = "blue")
+text(31, 185, "Y_bar", adj = c(-0.1,1.5), col = "blue", cex = 0.8)
+```
+
+Dari *scatter plot* di atas, teramati adanya amatan yang menyimpang relatif terhadap nilai harapannya. Penyimpangan amatan dari nilai harapannya inilah yang disebut sebagai *galat*. Keragaman dari galat tiap amatan ini dapat diurai berdasarkan garis dugaan persamaan ($\hat{Y}$) dan garis rataan nilai resposnya ($\bar{Y}$). Penguraian keragaman ini dapat dituliskan sebagai Jumlah Kuadrat Regresi (JKR), Jumlah Kuadrat Galat (JKG), dan Jumlah Kuadrat Total (JKT) dengan perhitungan sebagai berikut.
+
+$$JKR=\sum_{i=1}^{n} (\hat{y_i}-\bar{y})^2; JKG=\sum_{i=1}^{n} (y_i-\hat{y_i})^2; JKT=\sum_{i=1}^{n} (y_i-\bar{y})^2$$
+
+Hubungan antara ketiganya dapat pula dituliskan sebagai berikut.
+
+$$JKT = JKR + JKG$$
+
+Nilai penguraian k eragaman ini dapat diamati pula menggunakan fungsi `anova()` pada bagian **Sum Sq**(**Jumlah Kuadrat**) seperti yang ditampilkan di bawah. Pada output sintaks di bawah, JKR model bernilai 8.501,9 dan JKG model bernilai 29.395,4.
+
+```{r}
+(anova.model <- anova(model))
+```
+
+Dari tabel ANOVA dan penguraian keragaman, dapat diduga pula **ragam galat/error** dari model yang kita peroleh. Secara umum, *error* dari model dapat diduga oleh nilai Kuadrat Tengah Galat (KTG) sehingga berdasarkan output sintaks di atas, diketahui bahwa ragam galat dari model bernilai 864,6. Hubungan antara keduanya dapat dituliskan sebagai berikut.
+
+$$\hat{\sigma}^2=s_e^2=KTG=JKG/(n-2)$$
+
+```{r}
+(KTG <- anova.model$`Mean Sq`[2])
+```
+
+Dari nilai dugaan ragam galat di atas, dapat diduga pula nilai dugaan dari simpangan bakunya. Dugaan simpangan baku inlah yang disebut **galat baku**. Hubungan antara galat baku dan ragam galat dapat dituliskan sebagai berikut.
+
+$$s_e=\sqrt{s_e^2}$$
+
+Oleh karena simpangan baku merupakan akar kuadrat dari ragam, maka nilai dugaan galat baku model yang kita bentuk adalah $s_e=\sqrt{864,6}\approx29,4$.
+
+```{r}
+(galat.baku <- sqrt(KTG))
+```
+
+# Keragaman Dugaan Parameter
+
+## Dugaan Parameter β0
+
+Sebelumnya, melalui fungsi `lm()` dan perhitungan manual yang sudah dibahas pada pertemuan sebelumnya, kita sudah mendapatkan nilai dugaan parameter $\beta_0$ dan $\beta_1$ sebesar 138.8326 dan 2.1045. Kedua nilai dugaan parameter tersebut dapat kita definisikan sebagai berikut.
+
+```{r}
+(b0 <- model$coefficients[[1]])
+```
+
+```{r}
+(b1 <- model$coefficients[[2]])
+```
+
+Selanjutnya kita dapat menghitung nilai **ragam** dan **t-hitung** dari dugaan parameter $\beta_0$ tersebut dengan perhitungan sebagai berikut.
+
+$$s_{\hat{\beta_0}}=\sqrt{KTG(\frac{1}{n}+\frac{\bar{x}^2}{\sum_{i=1}^{n}(x_i-\bar{x})^2})};t_{hitung}=\frac{\hat{\beta_0}-\beta_0}{s_{\hat{\beta_0}}}$$
+
+nilai $s_{\hat{\beta_0}}$ dapat dihitung dengan sintaks sebagai berikut.
+
+```{r}
+(se_b0 <- sqrt(KTG*(1/n+mean(x1)^2/sum((x1-mean(x1))^2))))
+```
+
+Jika dalam uji hiptesis kita ingin menguji apakah $\beta_0=0$, maka nilai $t_{hitung}$ dapat dihitung sebagai berikut.
+
+```{r}
+(t_b0 <- b0/se_b0)
+```
+
+## Dugaan Parameter β1
+
+Sementara itu, ragam dan t-hitung dari dugaan parameter $\beta_1$ dapat diperoleh dadri perhitungan berikut.
+
+$$s_{\hat{\beta_1}}=\sqrt{\frac{KTG}{\sum_{i=1}^{n}(x_i-\bar{x})^2}};t_{hitung}=\frac{\hat{\beta_1}-\beta_1}{s_{\hat{\beta_1}}}$$
+
+Nilai $s_{\hat{\beta_1}}$ dapat dihitung dengan sintaks sebagai berikut.
+
+```{r}
+(se_b1 <- sqrt(KTG/sum((x1-mean(x1))^2)))
+```
+
+Jika dalam uji hipotesis kita ingin menguji apakah $\beta_1=0$, maka nilai $t_{hitung}$ dapat dihitung sebagai berikut.
+
+```{r}
+(t_b1 <- b1/se_b1)
+```
+
+## Selang Kepercayaan Parameter
+
+Secara umum, kita dapat memehami bahwa selanag kepercayaan untuk $\hat{\beta_0}$ dan $\hat{\beta_1}$ terdiri atas batas bawah dan batas atas yang dapat dituliskan sebagai berikut.
+
+$$\hat{\beta_0}-t_{(n-2;\frac{\alpha}{2})}s_{\hat{\beta_0}}<\hat{\beta_0}<\hat{\beta_0}+t_{(n-2;\frac{\alpha}{2})}s_{\hat{\beta_0}}$$ $$\hat{\beta_1}-t_{(n-2;\frac{\alpha}{2})}s_{\hat{\beta_1}}<\hat{\beta_1}<\hat{\beta_1}+t_{(n-2;\frac{\alpha}{2})}s_{\hat{\beta_1}}$$
+
+Batas bawah untuk kedua dugaan parameter dalam taraf kepercayaan $\alpha=0.05$ dapat dihitung sebagai berikut.
+
+```{r}
+#Batas Bawah Beta0
+(bb.b0 <- b0 - abs(qt(0.025, df=n-2))*se_b0)
+```
+
+```{r}
+#Batas Bawah Beta1
+(bb.b1 <- b1 - abs(qt(0.025, df=n-2))*se_b1)
+```
+
+Sementara itu, batas atas untuk kedua dugaan parameter dalam taraf kepercayaan $\alpha=0.05$ dapat dihitung sebagai berikut.
+
+```{r}
+#Batas Atas Beta0
+(ba.b0 <- b0 + abs(qt(0.025, df=n-2))*se_b0)
+```
+
+```{r}
+#Batas Atas Beta1
+(ba.b1 <- b1 + abs(qt(0.025, df=n-2))*se_b1)
+```
+
+Sehingga dapat disusun suatu selang kepercayaan untuk $\hat{\beta_0}$ dan $\hat{\beta_1}$ sebagai berikut.
+
+$$116.4715<\hat{\beta_0}<161.1938$$
+
+Yang dapat dimaknai bahwa dalam taraf kepercayaan 95%, diyakini bahwa dugaan parameter $\hat{\beta_0}$ berada dalam selang 116.4715 hingga 161,1938
+
+$$0.7406375<\hat{\beta_1}<3.468282$$
+
+Yang dapat dimaknai bahwa dalam tarf kepercayaan 95%, diyakini bahwa dugaan parameter $\hat{\beta_1}$ berada dalam selang 0.7406375 hingga 3.468282.
+
+# Selang Kepercayaan Rataan (Nilai Harapan) Amatan
+
+Secara umum, kita dapat memahami bahwa selang kepercayaan untuk $E(\hat{Y}|x_0)$ terdiri atas batas bawah dan batas atas yang dapat dituliskan sebagai berikut
+
+$$E(\hat{Y}|x_0)\pm t_{(n-2;\frac{\alpha}{2})}s_e\sqrt{[\frac{1}{n}+\frac{(x_i-\bar{x})^2}{\sum_{i=1}^{n}(x_i-\bar{x})^2}]}$$
+
+Misalkan kita ingin menduga nilai rataan (harapan) amatan ketika nilai $x_1=12$. Kita dapat memanfaatkan fungsi `predict()` untuk mendapatkan nilai dugaan dan selang kepercayaannya sebagai berikut.
+
+```{r}
+amatan.diduga <- data.frame(x1=12)
+predict(model, amatan.diduga, interval = "confidence")
+```
+
+Berdasarkan output sintaks di atas, diketahui bahwa dugaan rataan nilai $Y$ ketika nilai $x_1=12$ adalah $164,0862$. Selain itu, diindikasikan juga bahwa dalam taraf kepercayaan 95%, diyakini bahwa nilai dugaan rataan $Y$ ketika nilai $x_1=12$ berada dalam selang 153.4774 hingga 174.6949.
+
+# Selang Kepercayaan Individu Amatan
+
+Secara umum, kita dapat memahami bahwa selang kepercayaan untuk $\bar{y}(x_i)$ terdiri atas batas bawah dan batas atas yang dapat dituliskan sebagai berikut.
+
+$$\hat{y}\pm t_{(n-2;\frac{\alpha}{2})}s_e\sqrt{[1+\frac{1}{n}+\frac{(x_i-\bar{x})^2}{\sum_{i=1}^{n}(x_i-\bar{x})^2}]}$$
+
+Misalkan kita ingin menduga nilai individu amatan ketika nilai $x_1=12$. Kita dapat memanfaatkan fungsi predict() untuk mendapatkan nilai dugaan dan selang kepercayaannya sebagai berikut.
+
+```{r}
+predict(model, amatan.diduga, interval = "prediction")
+```
+
+Berdasarkan output sintaks di atas, diketahui bahwa dugaan nilali individu $Y$ ketika nilai $X_1=12$ adalah 164.0862. Selain itu, diindikasikan juga bahwa dalam taraf kepercayaan 95%, diyakini bahwa nilai amatan individu $Y$ ketika nilai $X-1=12$ berada dalam selang 103.3965 hingga 224.7758.
