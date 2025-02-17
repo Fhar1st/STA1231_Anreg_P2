@@ -1,0 +1,245 @@
+---
+title: "Responsi 4 - Regresi Linear Berganda"
+author: "Farik Firsteadi Haristiyanto"
+date: "`r Sys.Date()`"
+output:
+  rmdformats::readthedown
+---
+
+# Definisi
+
+Regresi Linear Berganda (**RLB**) adalah sebuah metode statistik yang digunakan untuk memodelkan hubungan antara **satu variabel dependen (variabel respons)** dengan **dua atau lebih variabel independen (variabel prediktor)**. Dalam perhitungannya kerap digunakan matriks sebagai bentuk nyata bahwa regresi ini adalah kelanjutan regresi sederhana yang memiliki jumlah variabel lebih banyak.
+
+# Praktik
+
+Pertemuan kali ini akan melakukan eksplorasi seputar "**Regresi Linear Berganda**" dengan data bangkitan untuk mengetahui seperti apa model yang akan terbentuk dan bagaimana alurnya mulai dari pembangkitan data hingga perbandingan model.
+
+## Membangkitkan data simulasi
+
+```{r}
+set.seed(1015) #Pengetauran set data
+n <- 100 #Jumlah objek amatan
+p <- 3 #Jumlah parameter
+
+x1 <- runif(n,3,8) #Bangkitan data distribusi seragam rentang dari 3 hingga 8
+x2 <- rnorm(n,2,2) #Bangkitan data ditribusi normal dengan rerata 2, sd 2
+x0 <- rep(1,n) #Vektor 1 matriks X
+X <- data.frame(x0,x1,x2)
+head(X)
+```
+
+## Pembentukan error dan persamaan y (Komponen Acak)
+
+```{r}
+e <- rnorm(n,0,2) #Bilangan acak normal rerata 0, sd 2
+y <- 5 + 4*x1 + 3*x2 + e #Persamaan model y
+rand.comp <- data.frame(e,y)
+head(rand.comp)
+```
+
+```{r}
+dt <- data.frame(y,x1,x2)
+head(dt)
+```
+
+## Eksplorasi data
+
+```{r}
+par(mfrow=c(1,2))
+plot(x1, y, pch=19)
+plot(x2, y, pch=7)
+```
+
+Kedua plot eksplorasi memberikan gambaran pada kecenderungan korelasi antar peubah y dengan masing-masing peubah x berupa tren positif diikuti dengan keragaman yang cukup besar.
+
+## Pembentukan model (Perhitungan matriks manual)
+
+### Parameter Regresi
+
+$$
+b_{(k+1)\times1}=(X'X)_{(k+1)\times(k+1)}^{-1}X'_{(k+1)\times{n}}y_{(n\times1)}
+$$
+
+```{r}
+y <- as.matrix(y)
+X <- as.matrix(cbind(x0,x1,x2))
+b <- solve(t(X)%*%X)%*%t(X)%*%y;round(b,4)
+```
+
+```{r}
+b0 <- b[1]
+b1 <- b[2]
+b2 <- b[3]
+
+print(paste("b0:",b[1]))
+print(paste("b1:",b[2]))
+print(paste("b2:",b[3]))
+```
+
+### Koefisien determinasi dan penyesuaiannya
+
+$$
+\hat{\sigma}^2=\frac{SSR_{esidual}}{n-p}=\frac{y'y-\hat{\beta}x'y}{n-p}
+$$
+
+```{r}
+#Koef. regresi dengan metode OLS
+sigma_kuadrat <- (t(y)%*%y-t(b)%*%t(X)%*%y)/(n-p)
+Res_se <- sqrt(sigma_kuadrat)
+round(Res_se,3)
+```
+
+nilai koefisien regresi menunjukkan bahwa, secara rata-rata, prediksi model menyimpang sekitar 2.178 unit dari nilai aktual $y$.
+
+```{r}
+#Degree of freedom (derajat bebas)
+df <- n-p
+df
+```
+
+```{r}
+y_duga <- b0+b1*x1+b2*x2
+Y <- data.frame(y,y_duga);head(Y)
+```
+
+```{r}
+R_squared <- (cor(y,y_duga))^2;round(R_squared,4)
+```
+
+$R^2$ mengukur proporsi variasi dalam variabel dependen $y$ yang dapat dijelaskan oleh variabel independen dalam model. Nilai $R^2$ sebesar **0.9328** menunjukkan bahwa sekitar **93.28%** dari variasi dalam $y$ dapat dijelaskan oleh model regresi. Ini menunjukkan bahwa model memiliki kecocokan yang sangat baik dengan data.
+
+```{r}
+R_squared_adj <- 1-((1-R_squared)*(n-1)/(n-p));round(R_squared_adj,4)
+```
+
+Adjusted $R^2$ memperhitungkan jumlah variabel independen dalam model dan memberikan penalti untuk model yang terlalu kompleks. Nilai adjusted $R^2$ sebesar **0.9314** menunjukkan bahwa meskipun ada penalti untuk jumlah variabel, model masih mampu menjelaskan **93.14%** dari variasi dalam $y$.
+
+### Uji F dan Std.Error parameter regresi
+
+![ANOVA](C:/Users/faeri/OneDrive/Pictures/Screenshot/Screenshot%202025-02-17%20123708.png)
+
+```{r}
+galat <- y-(b0+b1*x1+b2*x2)
+KTReg <- sum((y_duga-mean(y))^2)/(p-1);print(paste("KTR:",KTReg))
+KTG <- sum(galat^2)/(n-p);print(paste("KTG",KTG))
+Fhit <- KTReg/KTG;print(paste("Fhit:",round(Fhit,0)))
+```
+
+```{r}
+dbreg <- p-1;print(paste("dbr:",dbreg)) #Derajat bebas regresi
+dbg <- n-p;print(paste("dbg:",dbg)) #Derajat bebas galat
+```
+
+```{r}
+#p-value untuk uji F
+pf(Fhit, dbreg, dbg, lower.tail = F)
+```
+
+```{r, warning=FALSE}
+#Standar error koefisien regresi
+se_b <- sqrt(sigma_kuadrat[1]*solve(t(X)%*%X))
+se_b
+```
+
+```{r}
+se_b0 <- se_b[1,1];print(paste("se_b0:",round(se_b0,4)))
+se_b1 <- se_b[2,2];print(paste("se_b1:",round(se_b1,4)))
+se_b2 <- se_b[3,3];print(paste("se_b2:",round(se_b2,4)))
+```
+
+### Signifikansi Parameter (nilai-t)
+
+```{r}
+# t-value
+t_b0 <- b0/se_b0;print(paste("t_b0:",round(t_b0,2)))
+t_b1 <- b1/se_b1;print(paste("t_b1:",round(t_b1,2)))
+t_b2 <- b2/se_b2;print(paste("t_b2:",round(t_b2,2)))
+```
+
+```{r}
+# p-value
+print(paste("p_b0:",2*pt(-abs(t_b0),df <- n-p)))
+print(paste("p_b1:",2*pt(-abs(t_b1),df <- n-p)))
+print(paste("p_b2:",2*pt(-abs(t_b2),df <- n-p)))
+```
+
+### Selang Kepercayaan (1-alfa)/\*100%
+
+```{r}
+t <- qt(.975, df <- n-p)
+
+BB_b0 <- b0-t*se_b0
+BA_b0 <- b0+t*se_b0
+
+BB_b1 <- b1-t*se_b1
+BA_b1 <- b1+t*se_b1
+
+BB_b2 <- b2-t*se_b2
+BA_b2 <- b2+t*se_b2
+
+Batas.Bawah <- as.matrix(c(round(BB_b0,6),round(BB_b1,6),round(BB_b2,6)))
+Batas.Atas <- as.matrix(c(round(BA_b0,6),round(BA_b1,6),round(BA_b2,6)))
+Fit <- (c(round(b0,6),round(b1,6),round(b2,6)))
+
+Selang.Kepercayaan <- cbind(Batas.Bawah, Fit, Batas.Atas)
+colnames(Selang.Kepercayaan ) <- c("Batas bawah Selang (2.5%)", "Fit", "Batas atas Selang (97.5%)")
+rownames(Selang.Kepercayaan ) <- c("Intersep", "b1", "b2")
+Selang.Kepercayaan
+```
+
+## Pembentukan model (Fungsi lm())
+
+Dalam penggunaan fungsi `lm()`, kita akan memperoleh secara langsung nilai-nilai pada pemodelan regresi dari data yang kita miliki. Dengan menggunakan fungsi `summary()`, `anova()`, dan `confint()` dari model yang terbentuk maka dapat diperoleh **nilai parameter**, **signifikansi**, **standar eror**, **koefisien determinasi**, serta **selang kepercayaan**.
+
+```{r}
+reg <- lm(y~x1+x2, data=dt)
+summary(reg)
+```
+
+```{r}
+anova(reg)
+```
+
+```{r}
+confint(reg)
+```
+
+## Perbandingan manual (matriks) dan fungsi lm()
+
+```{r}
+koef <- as.matrix(reg$coefficients)
+penduga <- cbind(b, koef)
+colnames(penduga) <- c('matriks', 'fungsi lm')
+rownames(penduga) <- c("intersep", "b1", "b2")
+penduga
+```
+
+Berdasar perbandingan ini diperoleh hasil yang sama yang artinya penggunaan matriks secara manual sudah tepat dalam memodelkan regresi linear berganda bergitu pula sebaliknya.
+
+# Tambahan: Perbandingan 2 model
+
+```{r}
+# Model 1
+a <- summary(reg)
+r.sq1 <- a$r.squared
+adj_r.sq1 <- a$adj.r.squared
+se1 <- a$sigma
+
+# Model 2
+reg2 <- lm(y~.-1, data=dt)
+b <- summary(reg2)
+r.sq2 <- b$r.squared
+adj_r.sq2 <- b$adj.r.squared
+se2 <- b$sigma
+
+##===Membandingkan kebaikan model===
+model1 <- as.matrix(c(r.sq1,adj_r.sq1,se1))
+model2 <- as.matrix(c(r.sq2,adj_r.sq2,se2))
+
+tabel <- cbind(model1, model2)
+colnames(tabel) <- c("Model 1", "Model 2")
+rownames(tabel) <- c("R-Square", "Adj R-Square", "Standar Error Sisaan")
+tabel
+```
+
+Perbandingan yang dilakukan memberikan gambaran bagaimana membandingkan 2 buah model regresi berganda. Dari perbandingan ini diperoleh bahwa penggunaan $adj.R^2$ akan lebih baik dari penggunaan $R^2$ untuk membandingkan mana model terbaik.
