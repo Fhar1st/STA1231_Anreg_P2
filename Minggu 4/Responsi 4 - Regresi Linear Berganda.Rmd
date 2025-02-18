@@ -163,7 +163,7 @@ print(paste("p_b1:",2*pt(-abs(t_b1),df <- n-p)))
 print(paste("p_b2:",2*pt(-abs(t_b2),df <- n-p)))
 ```
 
-### Selang Kepercayaan (1-alfa)/\*100%
+### Selang Kepercayaan (1-alfa)*100%
 
 ```{r}
 t <- qt(.975, df <- n-p)
