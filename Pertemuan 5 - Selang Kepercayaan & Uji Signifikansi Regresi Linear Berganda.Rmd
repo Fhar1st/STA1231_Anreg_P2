@@ -1,0 +1,366 @@
+---
+title: "Pertemuan 5 - Selang Kepercayaan & Uji Signifikansi Regresi Linear Berganda"
+author: "Farik Firsteadi Haristiyanto"
+date: "`r Sys.Date()`"
+output:
+  rmdformats::readthedown
+---
+
+Kali ini kita hanya akan menggunakan lima peubah dari dataset `state.x77` dengan peubah Life Exp sebagai peubah respons dan sisanya sebagai peubah penjelas.
+
+```{r}
+data <- as.data.frame(state.x77)
+data <- data[,-c(1,2,8)]
+n <- nrow(data)
+
+data
+```
+
+# Pemodelan Regresi Linear Berganda
+
+```{r}
+model_le <- lm(`Life Exp`~Illiteracy+Murder+`HS Grad`+Frost, data=data)
+(summary_model <- summary(model_le))
+```
+
+
+Berdasarkan perhitungan, didapat dugaan persamaan regresi linear berganda sebagai berikut. Selain itu, diamati juga bahwa hanya dugaan parameter untuk peubah **Illiteracy** $(\beta_1)$ yang tidak berpengaruh signifikan terhadap peubah respons **Life Exp** dalam taraf nyata $5\%$.
+
+$$
+\hat{Y}=71,52-0,18X_1-0,27X_2+0,04X_3-0,01X_4
+$$
+
+Sebagaimana yang sudah kita pelajari, untuk mencari nilai dugaan ragam atas dugaan persamaan, kita dapat menghitung nilai Kuadrat Tengah Sisaan melalui tabel ANOVA sebagai berikut.
+
+```{r}
+(anova_model <- anova(model_le))
+```
+
+```{r}
+(KTG <- round(anova_model$`Mean Sq`[5],2))
+```
+
+Dari tabel ANOVA di atas, dapat diduga ragam dugaan persamaan melalui nilai **Mean Square Residuals**, yaitu senilai $0,56$. Hubungan antara keduanya dapat dituliskan sebagai berikut.
+
+$$
+\hat\sigma^2=KTG=0,56
+$$
+
+# Uji Hipotesis Parameter Regresi
+
+![Tabel Sidik Ragam](C:/Users/faeri/OneDrive/Pictures/Screenshot/Screenshot 2025-02-24 233104.png)
+
+```{r}
+# Data
+data <- as.data.frame(state.x77)
+data <- data[,-c(1,2,8)]
+n <- nrow(data)
+
+# Model regresi
+model_le <- lm(`Life Exp` ~ Illiteracy + Murder + `HS Grad` + Frost, data = data)
+
+# Rata-rata total
+Y_bar <- mean(data$`Life Exp`)
+
+# Total Sum of Squares (SST)
+SST <- sum((data$`Life Exp` - Y_bar)^2)
+
+# Model Sum of Squares (SSM)
+Y_hat <- predict(model_le)
+SSM <- sum((Y_hat - Y_bar)^2)
+
+# Residual Sum of Squares (SSR)
+SSR <- SST - SSM
+
+# Derajat Kebebasan
+k <- length(coef(model_le))  # Jumlah variabel independen + 1 untuk intercept
+df_model <- k - 1
+df_residual <- n - k
+
+# Mean Squares
+MSM <- SSM / df_model
+MSR <- SSR / df_residual
+
+# F-statistic
+F_statistic <- MSM / MSR
+
+# Tabel Sidik Ragam
+anova_table <- data.frame(
+  Sumber_Variasi = c("Model", "Residual", "Total"),
+  SS = c(SSM, SSR, SST),
+  df = c(df_model, df_residual, n - 1),
+  MS = c(MSM, MSR, NA),
+  F = c(F_statistic, NA, NA)
+)
+
+print(anova_table)
+```
+
+## Uji Simultan
+
+$$
+H_0:\beta_1=\beta_2=\beta_3=...=\beta_k=0
+$$
+Semua peubah penjelas $x_1,x_2,...,x_k$ tidak berpengaruh linear terhadap peubah respon
+
+$$
+H_1:\beta_j\neq0{\space}untuk{\space}suatu{\space}j,j=1,2,...,k
+$$
+
+Minimal terdapat satu peubah penjelas yang bepengaruh linear terhadap peubah respon
+
+```{r}
+# Tentukan tingkat signifikansi
+alpha <- 0.05
+
+# Hitung nilai F-tabel
+F_tabel <- qf(1 - alpha, df_model, df_residual)
+
+# Bandingkan F-hitung dengan F-tabel
+if (F_statistic > F_tabel) {
+  cat("F-hitung lebih besar dari F-tabel. Tolak hipotesis nol.\n")
+} else {
+  cat("F-hitung tidak lebih besar dari F-tabel. Gagal menolak hipotesis nol.\n")
+}
+
+# Tampilkan hasil
+cat("F-hitung:", F_statistic, "\n")
+cat("F-tabel:", F_tabel, "\n")
+```
+
+Ada bukti yang cukup untuk menyatakan bahwa setidaknya satu dari variabel independen dalam model regresi berkontribusi secara signifikan terhadap variabel dependen. Dengan kata lain, model regresi signifikan secara statistik.
+
+## Uji Parsial
+
+$$
+h_0:\beta_j=0
+$$
+
+Peubah penjelas $x_j$ tidak berpengaruh terhadap peubah respon
+
+$$
+h_1:\beta_j\neq0
+$$
+
+Peubah penjelas $x_j$ bepengaruh terhadap peubah respon, setelah peubah penjelas lainnya ada dalam model
+
+```{r}
+# Tentukan tingkat signifikansi
+alpha <- 0.05
+
+# Hitung nilai t-hitung dan bandingkan dengan t-tabel untuk setiap koefisien
+for (i in 2:k) {  # Mulai dari 2 untuk menghindari intercept
+  beta_hat <- summary_model$coefficients[i, 1]  # Koefisien
+  SE_beta_hat <- summary_model$coefficients[i, 2]  # Standar error
+  
+  # Hitung t-hitung
+  t_hitung <- abs(beta_hat / SE_beta_hat)
+  
+  # Hitung nilai t-tabel
+  t_tabel <- qt(1 - alpha/2, df_residual)  # Dua sisi
+  
+  # Bandingkan t-hitung dengan t-tabel
+  if (t_hitung > t_tabel) {
+    cat("Koefisien untuk variabel", rownames(summary_model$coefficients)[i], 
+        "menolak hipotesis nol (t-hitung:", t_hitung, 
+        ", t-tabel:", t_tabel, ")\n")
+  } else {
+    cat("Koefisien untuk variabel", rownames(summary_model$coefficients)[i], 
+        "gagal menolak hipotesis nol (t-hitung:", t_hitung, 
+        ", t-tabel:", t_tabel, ")\n")
+  }
+}
+```
+
+Dapat disimpulkan bahwa peubah Murder, HS Grad, dan Frost memiliki pengaruh yang signifikan terhadap variabel dependen, sedangkan variabel Illiteracy tidak memiliki pengaruh yang signifikan.
+
+# Ukuran Kebaikan Model
+
+## $R^2$
+
+Pada regresi linier berganda, $R=\sqrt{R^2}$ disebut sebagai *multiple correlation coefficient*, mengukur hubungan antara peubah respon $y$ dengan satu set peubah predictor/penjelas $x_1,x_2,…,x_k$.
+
+```{r}
+R_sq <- 1 - (SSR / SST)
+cat("R^2:", R_sq, "\n")
+```
+
+$71\%$ dari propori keragaman total peubah respon dapat dijelaskan oleh seluruh peubah penjelas.
+
+## $Adj. R^2$
+
+$Adj. R^2$ terkadang digunakan untuk membandingkan beberapa model dengan banyak peubah penjelas berbeda, namun tidak dapat diinterpretasikan sebagai proporsi keragaman total dalam $y$ yang diterangkan oleh peubah predictor/penjelas.
+
+```{r}
+adj_R_sq <- 1 - ((1 - R_sq) * (n - 1) / (n - k - 1))
+cat("Adjusted R^2:", adj_R_sq, "\n")
+```
+
+$68.22\%$ dari variasi dalam variabel dependen dapat dijelaskan oleh variabel independen, dengan mempertimbangkan jumlah variabel dalam model.
+
+# Dugaan Keragaman Parameter
+
+Keragaman pada tiap dugaan parameter perlu dihitung guna menentukan selang kepercayaan dan pengujian signifikansi parameter itu sendiri. Secara umum, nilai ragam dugaan parameter $\hat\beta_j$ dapat dihitung melalui rumus berikut.
+
+$$
+Var(\hat\beta_j)=\sigma^2C_{jj}
+$$
+
+dengan nilai matriks $C$ dapat diperoleh melalui rumus berikut.
+
+$$
+C=(X'X)^{-1}
+$$
+
+## Pembentukan Matriks $c_{ii}$
+
+Terlebih dahulu perlu dibentuk matriks $X$ seperti berikut.
+
+![Matriks X dalam Regresi Linear Berganda](C:/Users/faeri/OneDrive/Pictures/Screenshot/Screenshot 2025-02-24 222206.png)
+
+```{r}
+x0 <- rep(1,n)
+(x <- data.frame(x0,data$Illiteracy,data$Murder,data$`HS Grad`,data$Frost))
+```
+
+```{r}
+p <- ncol(x)
+dim(x)
+```
+
+Matriks $X$ yang terbentuk memiliki dimensi $50×5$ sebagai representasi dari jumlah amatan $(n=50)$ dan jumlah parameter yang ingin diduga $(p=5)$. Selanjutnya dilakukan perkalian matriks untuk mendapatkan matriks $C_{p×p}$.
+
+```{r}
+x <- as.matrix(x)
+(c <- data.frame(solve(t(x)%*%x)))
+```
+
+```{r}
+dim(c)
+```
+
+## Selang Kepercayaan Parameter $\beta_0$
+
+Sebelumnya, melalui fungsi `lm`, kita sudah mendapatkan nilai dugaan parameter $\beta_0$ dan $\beta_1$ sebesar $71,52$ dan $-0,18$. Kedua nilai dapat kita definisikan sebagai berikut.
+
+```{r}
+(b0 <- model_le$coefficients[[1]])
+```
+
+```{r}
+(b1 <- model_le$coefficients[[2]])
+```
+
+Selanjutnya kita dapat menghitung nilai galat baku dari dugaan parameter $\beta_0$ tersebut dengan perhitungan sebagai berikut.
+
+$$
+s_{\hat\beta_0}=\hat\sigma\sqrt{c_{00}}
+$$
+
+Kita dapat mengidentifikasi nilai $c_{00}$ pada indeks matriks `c[1,1]` dilanjut dengan melakukan perhitungan galat bakunya.
+
+```{r}
+(c00 <- c[1,1])
+```
+
+```{r}
+(se.b0 <- sqrt(KTG*c00))
+```
+
+```{r}
+alfa <- 0.05
+
+#Batas Bawah beta0
+bb.b0 <- b0 - abs(qt(alfa/2,df=n-p))*se.b0
+
+#Batas Atas beta0
+ba.b0 <- b0 + abs(qt(alfa/2,df=n-p))*se.b0
+
+print(paste("Batas Bawah beta0:",bb.b0))
+print(paste("Batas Atas beta0:",ba.b0))
+```
+
+Dengan cara yang sama seperti yang kita lakukan ketika menghitung nilai selang kepercayaan dugaan parameter analisis regresi linear sederhana, kita dapati selang kepercayaan untuk $\hat\beta_0$ sebagai berikut.
+
+$$
+68,86<\hat\beta_0<74,18
+$$
+
+## Selang Kepercayaan Parameter $\beta_1$
+
+Untuk menghitung dugaan galat baku dari duaan parameter $\beta_1$, kita dapat menggunakan rumus berikut.
+
+$$
+s_{\hat\beta_1}=\hat\sigma\sqrt{c_{11}}
+$$
+
+Kita dapat mengidentifikasi nilai $c_{11}$ pada indeks matriks `c[2,2]` dilanjut dengan melakukan perhitungan galat bakunya.
+
+```{r}
+(c11 <- c[2,2])
+```
+
+```{r}
+(se.b1 <- sqrt(KTG*c11))
+```
+
+```{r}
+alfa <- 0.05
+
+#Batas Bawah beta1
+bb.b1 <- b1 - abs(qt(alfa/2,df=n-p))*se.b1
+
+#Batas Atas beta1
+ba.b1 <- b1 + abs(qt(alfa/2,df=n-p))*se.b1
+
+print(paste("Batas Bawah beta1:",bb.b1))
+print(paste("Batas Atas beta1:",ba.b1))
+```
+
+Dengan demikian, kita dapat selang kepercayaan untuk $\hat\beta_1$ sebagai berikut.
+
+$$
+-0,84<\hat\beta_1<0,48
+$$
+
+Pada kasus selang kepercayaan untuk $\hat\beta_1$ di atas, didapati bahwa dugaan parameter berada dalam rentang yang mengandung nilai 0. Dengan demikian, dapat dimaknai bahwa diduga nilai parameter berada dalam rentang yang mengandung nilai 0. Dengan demikian, dapat dimaknai bahwa didgua nilai parameter $\beta_1$ bernilai 0 atau tidak signifikan dalam taraf nyata $5\%$. Hal ini juga terkonfirmasi dalam output fungsi `lm()` di atas yang menunjukkan bahwa dugaan parameter $\hat\beta_1$ tidak signifikan (tidak terdapat simbol \*).
+
+# Penduga Keragaman dan Selang Kepercayaan Seluruh Parameter
+
+Untuk mempermudah pendugaan keragaman dan selang kepercayaan parameter, dapat dibentuk fungsi sebagai berikut.
+
+```{r}
+hitung_se_sk <- function(model, n, p, c, ragam, alfa=0.05){
+  galat_baku <- data.frame(parameter = character(), galat_baku = numeric())
+  selang_kepercayaan <- data.frame(batas_bawah = numeric(), parameter = character(), batas_atas = numeric())
+  
+  for (i in 1:5){
+    b <- model_le$coefficients[[i]]
+    c_ii <- c[i, i]
+    se_b <- sqrt(KTG*c_ii)
+    bb_b <- b - abs(qt(alfa/2, df = n-p)) * se_b
+    ba_b <- b + abs(qt(alfa/2, df = n-p)) * se_b
+    
+    # Data frame untuk galat baku
+    galat_baku <- rbind(galat_baku, data.frame(parameter = paste0("b", i-1), galat_baku = se_b))
+    
+    # Data frame untuk selang kepercayaan
+    selang_kepercayaan <- rbind(selang_kepercayaan, data.frame(batas_bawah = bb_b, parameter = paste0("b", i-1), batas_atas = ba_b))
+  }
+  
+  return(list(galat_baku = galat_baku, selang_kepercayaan = selang_kepercayaan))
+}
+```
+
+Fungsi di atas memberikan output berupa tabel nilai galat baku dan selang kepercayaan tiap dugaan parameter yang dapat diamati di bawah.
+
+```{r}
+hasil <- hitung_se_sk(model=model_le, n=n, p=p, c=c, ragam=KTG)
+(galat_baku <- hasil$galat_baku)
+```
+
+```{r}
+(selang_kepercayaan <- hasil$selang_kepercayaan)
+```
+
+
