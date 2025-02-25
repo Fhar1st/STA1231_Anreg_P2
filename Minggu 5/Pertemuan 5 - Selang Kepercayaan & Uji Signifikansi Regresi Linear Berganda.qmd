@@ -1,0 +1,423 @@
+---
+title: "Pertemuan 5 - Selang Kepercayaan & Uji Signifikansi Regresi Linear Berganda"
+author: "Farik Firsteadi Haristiyanto"
+format: html
+editor: visual
+---
+
+```{python}
+#!pip install jupyter
+```
+
+Kali ini kita hanya akan menggunakan lima peubah dari dataset `state.x77` dengan peubah Life Exp sebagai peubah respons dan sisanya sebagai peubah penjelas.
+
+```{python}
+#!pip install pandas
+import pandas as pd
+
+# URL untuk mengunduh dataset state.x77
+url = "https://vincentarelbundock.github.io/Rdatasets/csv/datasets/state.x77.csv"
+
+data = pd.read_csv(url, index_col=0)
+data = data.drop(data.columns[[0, 1, 7]], axis=1)
+n = data.shape[0]
+
+print(data)
+```
+
+# Pemodelan Regresi Linear Berganda
+
+```{python}
+#!pip install statsmodels
+import statsmodels.api as sm
+
+# Menentukan variabel dependen dan independen
+X = data[['Illiteracy', 'Murder', 'HS Grad', 'Frost']]
+y = data['Life Exp']
+
+X = sm.add_constant(X)
+model_le = sm.OLS(y, X).fit()
+summary_model = model_le.summary()
+
+print(summary_model)
+```
+
+Berdasarkan perhitungan, didapat dugaan persamaan regresi linear berganda sebagai berikut. Selain itu, diamati juga bahwa hanya dugaan parameter untuk peubah **Illiteracy** $(\beta_1)$ yang tidak berpengaruh signifikan terhadap peubah respons **Life Exp** dalam taraf nyata $5\%$.
+
+$$
+\hat{Y}=71,52-0,18X_1-0,27X_2+0,04X_3-0,01X_4
+$$
+
+Sebagaimana yang sudah kita pelajari, untuk mencari nilai dugaan ragam atas dugaan persamaan, kita dapat menghitung nilai Kuadrat Tengah Sisaan melalui tabel ANOVA sebagai berikut.
+
+```{python}
+from statsmodels.formula.api import ols
+model_le = ols('y ~ X', data=data).fit()
+
+anova_model = sm.stats.anova_lm(model_le)
+print("ANOVA Model:\n", anova_model)
+```
+
+```{python}
+KTG = round(anova_model['mean_sq'].iloc[1], 2)
+print("Nilai KTG:", KTG)
+```
+
+Dari tabel ANOVA di atas, dapat diduga ragam dugaan persamaan melalui nilai **Mean Square Residuals**, yaitu senilai $0,56$. Hubungan antara keduanya dapat dituliskan sebagai berikut.
+
+$$
+\hat\sigma^2=KTG=0,56
+$$
+
+# Uji Hipotesis Parameter Regresi
+
+![Tabel Sidik Ragam](C:/Users/faeri/OneDrive/Pictures/Screenshot/Screenshot%202025-02-24%20233104.png)
+
+```{python}
+model_le = sm.OLS(y, X).fit()
+
+# Rata-rata total
+Y_bar = y.mean()
+
+# Total Sum of Squares (SST)
+SST = sum((y - Y_bar) ** 2)
+
+# Model Sum of Squares (SSM)
+Y_hat = model_le.predict(X)
+SSM = sum((Y_hat - Y_bar) ** 2)
+
+# Residual Sum of Squares (SSR)
+SSR = SST - SSM
+
+# Derajat Kebebasan
+n = len(data)  # Jumlah observasi
+k = len(model_le.params)  # Jumlah variabel independen + 1 untuk intercept
+df_model = k - 1
+df_residual = n - k
+
+# Mean Squares
+MSM = SSM / df_model
+MSR = SSR / df_residual
+
+# F-statistic
+F_statistic = MSM / MSR
+
+# Tabel Sidik Ragam
+anova_table = pd.DataFrame({
+    'Sumber_Variasi': ['Model', 'Residual', 'Total'],
+    'SS': [SSM, SSR, SST],
+    'df': [df_model, df_residual, n - 1],
+    'MS': [MSM, MSR, None],
+    'F': [F_statistic, None, None]
+})
+
+# Menampilkan tabel ANOVA
+print(anova_table)
+```
+
+## Uji Simultan
+
+$$
+H_0:\beta_1=\beta_2=\beta_3=...=\beta_k=0
+$$
+
+Semua peubah penjelas $x_1,x_2,...,x_k$ tidak berpengaruh linear terhadap peubah respon
+
+$$
+H_1:\beta_j\neq0{\space}untuk{\space}suatu{\space}j,j=1,2,...,k
+$$
+
+Minimal terdapat satu peubah penjelas yang bepengaruh linear terhadap peubah respon
+
+```{python}
+from scipy.stats import f
+
+# Tentukan tingkat signifikansi
+alpha = 0.05
+
+# Hitung nilai F-tabel
+F_tabel = f.ppf(1 - alpha, df_model, df_residual)
+
+# Bandingkan F-hitung dengan F-tabel
+if F_statistic > F_tabel:
+    print("F-hitung lebih besar dari F-tabel. Tolak hipotesis nol.")
+else:
+    print("F-hitung tidak lebih besar dari F-tabel. Gagal menolak hipotesis nol.")
+
+# Tampilkan hasil
+print("F-hitung:", F_statistic)
+print("F-tabel:", F_tabel)
+```
+
+Ada bukti yang cukup untuk menyatakan bahwa setidaknya satu dari variabel independen dalam model regresi berkontribusi secara signifikan terhadap variabel dependen. Dengan kata lain, model regresi signifikan secara statistik.
+
+## Uji Parsial
+
+$$
+H_0:\beta_j=0
+$$
+
+Peubah penjelas $x_j$ tidak berpengaruh terhadap peubah respon
+
+$$
+H_1:\beta_j\neq0
+$$
+
+Peubah penjelas $x_j$ bepengaruh terhadap peubah respon, setelah peubah penjelas lainnya ada dalam model
+
+```{python}
+from scipy import stats
+
+# Menentukan tingkat signifikansi
+alpha = 0.05
+
+# Menghitung t-hitung dan membandingkannya dengan t-tabel untuk setiap koefisien
+for i in range(1, len(model_le.params)):  # Mulai dari 1 untuk menghindari intercept
+    beta_hat = model_le.params.iloc[i]  # Koefisien
+    SE_beta_hat = model_le.bse.iloc[i]  # Standar error
+    
+    # Hitung t-hitung
+    t_hitung = abs(beta_hat / SE_beta_hat)
+    
+    # Hitung nilai t-tabel
+    t_tabel = stats.t.ppf(1 - alpha/2, df=model_le.df_resid)  # Dua sisi
+    
+    # Bandingkan t-hitung dengan t-tabel
+    if t_hitung > t_tabel:
+        print(f"t-hitung untuk koefisien {model_le.params.index[i]} lebih besar dari t-tabel. Tolak hipotesis nol.")
+    else:
+        print(f"t-hitung untuk koefisien {model_le.params.index[i]} tidak lebih besar dari t-tabel. Gagal menolak hipotesis nol.")
+    
+    # Tampilkan hasil
+    print(f"t-hitung: {t_hitung:.4f}, t-tabel: {t_tabel:.4f}\n")
+```
+
+Dapat disimpulkan bahwa peubah Murder, HS Grad, dan Frost memiliki pengaruh yang signifikan terhadap variabel dependen, sedangkan variabel Illiteracy tidak memiliki pengaruh yang signifikan.
+
+# Ukuran Kebaikan Model
+
+## $R^2$
+
+Pada regresi linier berganda, $R=\sqrt{R^2}$ disebut sebagai *multiple correlation coefficient*, mengukur hubungan antara peubah respon $y$ dengan satu set peubah penjelas $x_1,x_2,…,x_k$.
+
+```{python}
+# Menghitung R-squared
+R_sq = 1 - (SSR / SST)
+print(f"R^2: {R_sq:.4f}")
+```
+
+$71\%$ dari propori keragaman total peubah respon dapat dijelaskan oleh seluruh peubah penjelas.
+
+## $Adj. R^2$
+
+$Adj. R^2$ terkadang digunakan untuk membandingkan beberapa model dengan banyak peubah penjelas berbeda, namun tidak dapat diinterpretasikan sebagai proporsi keragaman total dalam $y$ yang diterangkan oleh peubah predictor/penjelas.
+
+```{python}
+# Menghitung Adjusted R-squared
+n = len(y)  # Jumlah observasi
+k = len(model_le.params)  # Jumlah koefisien (termasuk intercept)
+adj_R_sq = 1 - ((1 - R_sq) * (n - 1) / (n - k - 1))
+print(f"Adjusted R^2: {adj_R_sq:.4f}")
+```
+
+$68.22\%$ dari variasi dalam variabel dependen dapat dijelaskan oleh variabel independen, dengan mempertimbangkan jumlah variabel dalam model.
+
+# Dugaan Keragaman Parameter
+
+Keragaman pada tiap dugaan parameter perlu dihitung guna menentukan selang kepercayaan dan pengujian signifikansi parameter itu sendiri. Secara umum, nilai ragam dugaan parameter $\hat\beta_j$ dapat dihitung melalui rumus berikut.
+
+$$
+Var(\hat\beta_j)=\sigma^2C_{jj}
+$$
+
+dengan nilai matriks $C$ dapat diperoleh melalui rumus berikut.
+
+$$
+C=(X'X)^{-1}
+$$
+
+## Pembentukan Matriks $c_{ii}$
+
+Terlebih dahulu perlu dibentuk matriks $X$ seperti berikut.
+
+![Matriks X dalam Regresi Linear Berganda](C:/Users/faeri/OneDrive/Pictures/Screenshot/Screenshot%202025-02-24%20222206.png)
+
+```{python}
+#!pip install numpy
+import numpy as np
+
+n = data.shape[0]
+x0 = np.ones(n)
+
+# Membuat DataFrame
+x = pd.DataFrame({
+    'Intercept': x0,
+    'Illiteracy': data['Illiteracy'],
+    'Murder': data['Murder'],
+    'HS Grad': data['HS Grad'],
+    'Frost': data['Frost']
+})
+print(x)
+```
+
+```{python}
+p = x.shape[1]
+print("Dimensi matriks c:", x.shape)
+```
+
+Matriks $X$ yang terbentuk memiliki dimensi $50×5$ sebagai representasi dari jumlah amatan $(n=50)$ dan jumlah parameter yang ingin diduga $(p=5)$. Selanjutnya dilakukan perkalian matriks untuk mendapatkan matriks $C_{p×p}$.
+
+```{python}
+x_matrix = x.values
+c = pd.DataFrame(np.linalg.inv(np.dot(x_matrix.T, x_matrix)))
+print(c)
+```
+
+```{python}
+print("Dimensi matriks c:", c.shape)
+```
+
+## Selang Kepercayaan Parameter $\beta_0$
+
+Sebelumnya, melalui fungsi `ols()`, kita sudah mendapatkan nilai dugaan parameter $\beta_0$ dan $\beta_1$ sebesar $71,52$ dan $-0,18$. Kedua nilai dapat kita definisikan sebagai berikut.
+
+```{python}
+b0 = model_le.params.iloc[0]  
+b1 = model_le.params.iloc[1]
+
+print("Koefisien b0:", b0)
+print("Koefisien b1:", b1)
+```
+
+Selanjutnya kita dapat menghitung nilai galat baku dari dugaan parameter $\beta_0$ tersebut dengan perhitungan sebagai berikut.
+
+$$
+s_{\hat\beta_0}=\hat\sigma\sqrt{c_{00}}
+$$
+
+Kita dapat mengidentifikasi nilai $c_{00}$ pada indeks matriks `c[1,1]` dilanjut dengan melakukan perhitungan galat bakunya.
+
+```{python}
+c = np.linalg.inv(X.T @ X)
+c00 = c[0,0]
+print("c00:", c00)
+```
+
+```{python}
+se_b0 = np.sqrt(KTG * c00)
+print("se_b0:", se_b0)
+```
+
+```{python}
+# Menentukan tingkat signifikansi
+alpha = 0.05
+
+# Menghitung batas bawah dan batas atas untuk b0
+n = len(data)  # Jumlah observasi
+p = len(model_le.params)  # Jumlah parameter (koefisien)
+
+# Batas Bawah beta0
+bb_b0 = b0 - abs(stats.t.ppf(1 - alpha / 2, df=n - p)) * se_b0
+
+# Batas Atas beta0
+ba_b0 = b0 + abs(stats.t.ppf(1 - alpha / 2, df=n - p)) * se_b0
+
+# Menampilkan hasil
+print(f"Batas Bawah beta0: {bb_b0}")
+print(f"Batas Atas beta0: {ba_b0}")
+```
+
+Dengan cara yang sama seperti yang kita lakukan ketika menghitung nilai selang kepercayaan dugaan parameter analisis regresi linear sederhana, kita dapati selang kepercayaan untuk $\hat\beta_0$ sebagai berikut.
+
+$$
+68,86<\hat\beta_0<74,18
+$$
+
+## Selang Kepercayaan Parameter $\beta_1$
+
+Untuk menghitung dugaan galat baku dari duaan parameter $\beta_1$, kita dapat menggunakan rumus berikut.
+
+$$
+s_{\hat\beta_1}=\hat\sigma\sqrt{c_{11}}
+$$
+
+Kita dapat mengidentifikasi nilai $c_{11}$ pada indeks matriks `c[2,2]` dilanjut dengan melakukan perhitungan galat bakunya.
+
+```{python}
+c = np.linalg.inv(X.T @ X)
+c11 = c[1,1]
+print("c11:", c11)
+```
+
+```{python}
+se_b1 = np.sqrt(KTG * c11)
+print("se_b1:", se_b1)
+```
+
+```{python}
+# Menentukan tingkat signifikansi
+alpha = 0.05
+
+# Menghitung batas bawah dan batas atas untuk b0
+n = len(data)  # Jumlah observasi
+p = len(model_le.params)  # Jumlah parameter (koefisien)
+
+# Batas Bawah beta0
+bb_b1 = b1 - abs(stats.t.ppf(1 - alpha / 2, df=n - p)) * se_b1
+
+# Batas Atas beta0
+ba_b1 = b1 + abs(stats.t.ppf(1 - alpha / 2, df=n - p)) * se_b1
+
+# Menampilkan hasil
+print(f"Batas Bawah beta0: {bb_b1}")
+print(f"Batas Atas beta0: {ba_b1}")
+```
+
+Dengan demikian, kita dapat selang kepercayaan untuk $\hat\beta_1$ sebagai berikut.
+
+$$
+-0,84<\hat\beta_1<0,48
+$$
+
+Pada kasus selang kepercayaan untuk $\hat\beta_1$ di atas, didapati bahwa dugaan parameter berada dalam rentang yang mengandung nilai 0. Dengan demikian, dapat dimaknai bahwa diduga nilai parameter berada dalam rentang yang mengandung nilai 0. Dengan demikian, dapat dimaknai bahwa didgua nilai parameter $\beta_1$ bernilai 0 atau tidak signifikan dalam taraf nyata $5\%$. Hal ini juga terkonfirmasi dalam output fungsi `ols()` di atas yang menunjukkan bahwa dugaan parameter $\hat\beta_1$ tidak signifikan (p-value \> $\alpha=0.05$).
+
+# Penduga Keragaman dan Selang Kepercayaan Seluruh Parameter
+
+Untuk mempermudah pendugaan keragaman dan selang kepercayaan parameter, dapat dibentuk fungsi sebagai berikut.
+
+```{python}
+def hitung_se_sk(model, n, p, c, ragam, alpha=0.05):
+    galat_baku = pd.DataFrame(columns=['parameter', 'galat_baku'])
+    selang_kepercayaan = pd.DataFrame(columns=['batas_bawah', 'parameter', 'batas_atas'])
+    
+    for i in range(len(model.params)):
+        b = model.params.iloc[i]  # Koefisien
+        c_ii = c[i, i]  # Varians dari koefisien
+        se_b = np.sqrt(ragam * c_ii)  # Standar error
+        
+        # Hitung batas bawah dan batas atas
+        bb_b = b - abs(stats.t.ppf(alpha / 2, df=n - p)) * se_b
+        ba_b = b + abs(stats.t.ppf(alpha / 2, df=n - p)) * se_b
+        
+        # Menyimpan hasil
+        galat_baku.loc[len(galat_baku)] = {'parameter': model.params.index[i], 'galat_baku': se_b}
+        selang_kepercayaan.loc[len(selang_kepercayaan)] = {'batas_bawah': bb_b, 'parameter': model.params.index[i], 'batas_atas': ba_b}
+    
+    return {'galat_baku': galat_baku, 'selang_kepercayaan': selang_kepercayaan}
+```
+
+Fungsi di atas memberikan output berupa tabel nilai galat baku dan selang kepercayaan tiap dugaan parameter yang dapat diamati di bawah.
+
+```{python}
+hasil = hitung_se_sk(model=model_le, n=n, p=p, c=c, ragam=KTG)
+
+# Menampilkan galat baku
+galat_baku = hasil['galat_baku']
+print("Galat Baku:\n", galat_baku)
+```
+
+```{python}
+# Menampilkan selang kepercayaan
+selang_kepercayaan = hasil['selang_kepercayaan']
+print("\nSelang Kepercayaan:\n", selang_kepercayaan)
+```
