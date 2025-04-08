@@ -1524,7 +1524,7 @@ model 2.</p>
 <h2>All Possible Regression</h2>
 <p>Pada metode ini, akan diuji semua kemungkinan model subset regresi
 dari semua kandidat peubah penjelas. Banyaknya model yang mungkin yaitu
-<span class="math inline">\(2^k\)</span>, di mana <span class="math inline">\(k\)</span> = banyaknya peubah penjelas. Contoh
+<span class="math inline">\(2^k-1\)</span>, di mana <span class="math inline">\(k\)</span> = banyaknya peubah penjelas. Contoh
 penerapan metode ini masih akan menggunakan data <code>Hitters</code>
 dan akan digunakan untuk forward, backward, stepwise, best subsets
 regression, serta PRESS.</p>
@@ -1552,7 +1552,7 @@ regression, serta PRESS.</p>
 <pre><code>## The following object is masked from &#39;package:datasets&#39;:
 ## 
 ##     rivers</code></pre>
-<div class="sourceCode" id="cb34"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb34-1"><a href="#cb34-1" tabindex="-1"></a><span class="co">#jumlah kombinasi model = 2^k, k=# peubah penjelas</span></span>
+<div class="sourceCode" id="cb34"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb34-1"><a href="#cb34-1" tabindex="-1"></a><span class="co">#jumlah kombinasi model = 2^k-1, k=# peubah penjelas</span></span>
 <span id="cb34-2"><a href="#cb34-2" tabindex="-1"></a>full.model <span class="ot">&lt;-</span> <span class="fu">lm</span>(Salary<span class="sc">~</span>., <span class="at">data =</span> Hitters)</span>
 <span id="cb34-3"><a href="#cb34-3" tabindex="-1"></a><span class="fu">ols_step_all_possible</span>(full.model)</span></code></pre></div>
 <pre><code>##    Index N                            Predictors  R-Square Adj. R-Square
